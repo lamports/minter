@@ -9,22 +9,11 @@
           "type": "image/png"
         }
       ],
-      "category": "image",
-      "creators": [
-        {
-            "address" : "srini",
-            "share" : "100",
-            "verified" : "true"
-        },
-        {
-            "address" : "ammu",
-            "share" : "100",
-            "verified" : "true"
-        }
-      ]
+      "category": "image"
     },
     "description": "",
-    "seller_fee_basis_points": 500,
+    "sellerFeeBasisPoints" : "100",
+    "seller_fee_basis_points": "500",
     "attributes": [
       {
         "trait_type": "background",
@@ -43,8 +32,17 @@
         "value": "teal-face"
       }
     ],
-    "collection": {
-        "name":"Test",
-        "family" : "TestGen"
-    }
+    "creators": [
+        {
+            "address" : "srini",
+            "share" : "100",
+            "verified" : "true"
+        },
+        {
+            "address" : "ammu",
+            "share" : "100",
+            "verified" : "true"
+        }
+      ],
+    "collection": {}
   }

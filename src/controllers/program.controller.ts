@@ -1,5 +1,6 @@
-import callMinter from '../web3/nft/crank';
+import callMinter from '../web3/nft/call.minter';
 import { initialize } from '../web3/setup/initial.setup';
+import startCrank from '../web3/crank';
 import { NextFunction, Request, Response } from 'express';
 
 class ProgramController {
@@ -12,9 +13,18 @@ class ProgramController {
     }
   };
 
-  public crank = async (_req: Request, res: Response, next: NextFunction) => {
+  public callMinter = async (_req: Request, res: Response, next: NextFunction) => {
     try {
       await callMinter();
+      res.sendStatus(200);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public crank = async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      await startCrank();
       res.sendStatus(200);
     } catch (err) {
       next(err);

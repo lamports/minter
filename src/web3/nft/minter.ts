@@ -90,8 +90,8 @@ export const getImagesAndMetadata = (currentFileIndex: number, requiredFiles: nu
 export const mintNFT = async (
   connection: Connection,
   wallet: anchor.Wallet | undefined,
-  env: string,
   imageAndMetaData: ImageMetadata,
+  env: string,
   maxSupply?: number,
 ): Promise<{
   metadataAccount: StringPublicKey | undefined;
@@ -103,6 +103,7 @@ export const mintNFT = async (
     symbol: imageAndMetaData.manifestJson.symbol,
     description: imageAndMetaData.manifestJson.description,
     seller_fee_basis_points: imageAndMetaData.manifestJson.sellerFeeBasisPoints,
+    sellerFeeBasisPoints: imageAndMetaData.manifestJson.sellerFeeBasisPoints,
     image: imageAndMetaData.manifestJson.image,
     animation_url: imageAndMetaData.manifestJson.animation_url,
     attributes: imageAndMetaData.manifestJson.attributes,
@@ -116,7 +117,7 @@ export const mintNFT = async (
         };
       }),
     },
-    //creators: imageAndMetaData.manifestJson.creators,
+    creators: imageAndMetaData.manifestJson.creators,
     //sellerFeeBasisPoints: imageAndMetaData.manifestJson.sellerFeeBasisPoints,
   };
 
@@ -215,18 +216,12 @@ export const mintNFT = async (
     contentType: 'image/png',
   });
   data.append('file[]', metadataBuffer, 'metadata.json');
-
+  data.append('env', env);
   // data.append()
 
   // TODO: convert to absolute file name for image
   const result: any = (
-    await axios.post(
-      env.startsWith('mainnet-beta')
-        ? 'https://us-central1-principal-lane-200702.cloudfunctions.net/uploadFile4'
-        : 'https://us-central1-principal-lane-200702.cloudfunctions.net/uploadFile4',
-      data,
-      { headers: data.getHeaders() },
-    )
+    await axios.post('https://us-central1-principal-lane-200702.cloudfunctions.net/uploadFile4', data, { headers: data.getHeaders() })
   ).data;
 
   console.log('RESULLTT ARWEAVEEE  {}', result);
@@ -247,7 +242,7 @@ export const mintNFT = async (
       name: metadata.name,
       symbol: metadata.symbol,
       uri: arweaveLink,
-      creators: metadata.properties.creators,
+      creators: metadata.creators,
       sellerFeeBasisPoints: metadata.seller_fee_basis_points,
     }),
     undefined,

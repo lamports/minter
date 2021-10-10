@@ -32,7 +32,7 @@ const callMinter = async (): Promise<[StringPublicKey | undefined, string]> => {
 
   const files = getImagesAndMetadata(0, 1, imagesPath);
 
-  const metaDataAccount: any = await mintNFT(provider.connection, walletWrapper, 'local_net', files[0], 1);
+  const metaDataAccount: any = await mintNFT(provider.connection, walletWrapper, files[0], 'devnet', 1);
 
   const walletPublicAddress = walletWrapper.publicKey.toString();
 
