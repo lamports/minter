@@ -1,0 +1,378 @@
+{
+  "version": "0.0.0",
+  "name": "router",
+  "instructions": [
+    {
+      "name": "initializeRouter",
+      "accounts": [
+        {
+          "name": "routerAccount",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "payer",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "wallet",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "updateConfig",
+      "accounts": [
+        {
+          "name": "routerAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "inputData",
+          "type": {
+            "defined": "UpdateConfigData"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addNftSubAccount",
+      "accounts": [
+        {
+          "name": "routerAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "inputData",
+          "type": {
+            "vec": {
+              "defined": "NftSubAccount"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "addUserForMintingNft",
+      "accounts": [
+        {
+          "name": "routerAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "wallet",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "updateCurrentAccountIndex",
+      "accounts": [
+        {
+          "name": "routerAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeSubAccount",
+      "accounts": [
+        {
+          "name": "routerAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "RouterData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "data",
+            "type": {
+              "defined": "NftAccountTracker"
+            }
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "config",
+            "type": {
+              "defined": "ConfigData"
+            }
+          },
+          {
+            "name": "wallet",
+            "type": "publicKey"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "NftAccountTracker",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "currentAccountIndex",
+            "type": "u16"
+          },
+          {
+            "name": "subAccounts",
+            "type": {
+              "vec": {
+                "defined": "NftSubAccount"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NftSubAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nftSubAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftSubProgramId",
+            "type": "publicKey"
+          },
+          {
+            "name": "currentSubAccountIndex",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "goLiveDate",
+            "type": "i64"
+          },
+          {
+            "name": "uuid",
+            "type": "string"
+          },
+          {
+            "name": "itemsAvailable",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateConfigData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "price",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "goLiveDate",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "uuid",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "itemsAvailable",
+            "type": {
+              "option": "u32"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "MintTokenEvent",
+      "fields": [
+        {
+          "name": "currentAccountIndex",
+          "type": "u16",
+          "index": false
+        },
+        {
+          "name": "payerKey",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 300,
+      "name": "IncorrectOwner",
+      "msg": "Account does not have correct owner!"
+    },
+    {
+      "code": 301,
+      "name": "Uninitialized",
+      "msg": "Account is not initialized!"
+    },
+    {
+      "code": 302,
+      "name": "NotEnoughSOL",
+      "msg": "Not enough SOL to pay for this minting"
+    },
+    {
+      "code": 303,
+      "name": "TokenTransferFailed",
+      "msg": "Token transfer failed"
+    },
+    {
+      "code": 304,
+      "name": "RouterNotLiveYet",
+      "msg": "We are not live yet"
+    },
+    {
+      "code": 305,
+      "name": "SaleIsOver",
+      "msg": "Sale is over"
+    },
+    {
+      "code": 306,
+      "name": "UserNotAddedToVault",
+      "msg": "User not added into the vault"
+    },
+    {
+      "code": 307,
+      "name": "NotAuthorized",
+      "msg": "Not authorized to update the User Vault"
+    },
+    {
+      "code": 308,
+      "name": "CannotCloseAccount",
+      "msg": "cannot close the sub account"
+    },
+    {
+      "code": 309,
+      "name": "SubAccountIsFull",
+      "msg": "Sub account is full, use the next sub account"
+    },
+    {
+      "code": 310,
+      "name": "NumericalOverflowError",
+      "msg": "Numerical Overflow"
+    }
+  ],
+  "metadata": {
+    "address": "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "version": "0.0.0",
+  "name": "vault",
+  "instructions": [
+    {
+      "name": "initializeUserVault",
+      "accounts": [
+        {
+          "name": "userVaultAccount",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "payer",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "addUserIntoVault",
+      "accounts": [
+        {
+          "name": "userVaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "data",
+          "type": {
+            "vec": {
+              "defined": "UpdateUserVault"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "closeAccount",
+      "accounts": [
+        {
+          "name": "userVaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "UserVaultAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "usersPubKey",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "UpdateUserVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "userPubKey",
+            "type": "publicKey"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 300,
+      "name": "NotAuthorized",
+      "msg": "Not authorized to update the User Vault"
+    }
+  ],
+  "metadata": {
+    "address": "5XcpJgxYgWbjn6mbAXm7njCnGfyzLU2Bgwo2JP7nf4wM"
+  }
+}
