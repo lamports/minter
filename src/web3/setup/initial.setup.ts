@@ -22,32 +22,54 @@ export const initialize = async (next: NextFunction) => {
 
     const maxVaultAccounts = +process.env.MAX_VAULT_ACCOUNTS;
 
-    const tx = await rpcCaller.initializeRouter(routerProgramID, routerIdlPath, routerSecretKeyPath, externalWallet);
+    const tx = await rpcCaller.initializeRouter(vaultProgramID, vaultIdlPath, routerProgramID, routerIdlPath, routerSecretKeyPath, externalWallet);
     const tx2 = await rpcCaller.updateRouterConfig(routerProgramID, routerIdlPath, routerSecretKeyPath, priceInLamports, goLiveDate, itemsAvailable);
 
     // // eslint-disable-next-line prefer-const
-    const vaultSecretFileNames: string[] = [];
 
+    const vaultSecretFileNames: string[] = [];
     for (let i = 1; i <= maxVaultAccounts; i++) {
-      vaultSecretFileNames.push(process.env[`VAULT_SECRET_` + i]);
+      const filePath = process.env.VAULT_JSON_PATH + 'vault_secret_' + i + '.json';
+      vaultSecretFileNames.push(filePath);
     }
 
-    console.log(vaultSecretFileNames[0]);
+    // await rpcCaller.addSubAccountsToRouter(
+    //   routerProgramID,
+    //   routerIdlPath,
+    //   vaultProgramID,
+    //   vaultIdlPath,
+    //   routerSecretKeyPath,
+    //   vaultSecretFileNames,
+    //   externalWallet,
+    // );
 
-    //initialize all vault accounts
-    vaultSecretFileNames.forEach(async vaultSecretFileName => {
-      await rpcCaller.initializeVault(vaultProgramID, vaultIdlPath, vaultSecretFileName);
-    });
+    let i = 0;
+    let j = 10;
 
-    await rpcCaller.addSubAccountsToRouter(
-      routerProgramID,
-      routerIdlPath,
-      vaultProgramID,
-      vaultIdlPath,
-      routerSecretKeyPath,
-      vaultSecretFileNames,
-      externalWallet,
-    );
+    while (i < maxVaultAccounts) {
+      if (j > maxVaultAccounts) {
+        j = maxVaultAccounts;
+      }
+
+      const slicedVaultSecretFileNames = vaultSecretFileNames.slice(i, j);
+
+      // initialize all vault accounts
+      slicedVaultSecretFileNames.forEach(async vaultSecretFileName => {
+        await rpcCaller.initializeVault(vaultProgramID, vaultIdlPath, vaultSecretFileName);
+      });
+
+      await rpcCaller.addSubAccountsToRouter(
+        routerProgramID,
+        routerIdlPath,
+        vaultProgramID,
+        vaultIdlPath,
+        routerSecretKeyPath,
+        slicedVaultSecretFileNames,
+        externalWallet,
+      );
+      i = i + 10;
+      j = j + 10;
+    }
   } catch (err) {
     next(err);
   }

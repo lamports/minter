@@ -202,10 +202,6 @@ export const mintNFT = async (
   }, {});
   data.append('tags', JSON.stringify(tags));
   data.append('transaction', txid);
-  // data.append('transaction', 'HpLu6rgNcudzAvMcfTwFT8k07dwXp5vd4goQdRy90b8');
-
-  // realFiles.map(f => data.append('file[]', f));
-
   const metadataContent = fs.readFileSync(imageAndMetaData.manifestPath).toString().replace('0', 'image').replace('0', 'image');
   const metadata = JSON.parse(metadataContent);
 
@@ -291,7 +287,7 @@ const prepPayForFilesTxn = async (
 
   console.log('Arweave Fee in Sols', arweaveFee);
 
-  if (wallet.publicKey) {
+  /* if (wallet.publicKey) {
     instructions.push(
       SystemProgram.transfer({
         fromPubkey: wallet.publicKey,
@@ -299,7 +295,7 @@ const prepPayForFilesTxn = async (
         lamports: 2300000, //arweaveFee,
       }),
     );
-  }
+  }*/
   for (let i = 0; i < files.length; i++) {
     const hashSum = crypto.createHash('sha256');
     hashSum.update(JSON.stringify(files[i]));

@@ -26,7 +26,12 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "nftSubProgramId",
+          "type": "publicKey"
+        }
+      ]
     },
     {
       "name": "updateConfig",
@@ -125,7 +130,12 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "mintNumber",
+          "type": "u32"
+        }
+      ]
     },
     {
       "name": "updateCurrentAccountIndex",
@@ -195,6 +205,10 @@
           {
             "name": "wallet",
             "type": "publicKey"
+          },
+          {
+            "name": "nftSubProgramId",
+            "type": "publicKey"
           }
         ]
       }
@@ -228,10 +242,6 @@
         "fields": [
           {
             "name": "nftSubAccount",
-            "type": "publicKey"
-          },
-          {
-            "name": "nftSubProgramId",
             "type": "publicKey"
           },
           {
@@ -313,6 +323,26 @@
           "index": false
         }
       ]
+    },
+    {
+      "name": "ItemsAvailableEvent",
+      "fields": [
+        {
+          "name": "itemsAvailable",
+          "type": "u32",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "SubAccountLimitEvent",
+      "fields": [
+        {
+          "name": "currentSubAccountIndex",
+          "type": "u16",
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -370,9 +400,49 @@
       "code": 310,
       "name": "NumericalOverflowError",
       "msg": "Numerical Overflow"
+    },
+    {
+      "code": 311,
+      "name": "ItemsUnavailableError",
+      "msg": "Items Unavailable"
+    },
+    {
+      "code": 312,
+      "name": "NftSubAccountError",
+      "msg": "Could not fetch next sub account"
+    },
+    {
+      "code": 313,
+      "name": "SubAccountIndexIncrementError",
+      "msg": "Could not increment the sub account index"
+    },
+    {
+      "code": 314,
+      "name": "NumericalUnderError",
+      "msg": "Not enough sub accounts added"
+    },
+    {
+      "code": 315,
+      "name": "MintMaxError",
+      "msg": "Cannot mint more than max mint"
+    },
+    {
+      "code": 316,
+      "name": "NotEnoughItemsError",
+      "msg": "Not enough items available"
+    },
+    {
+      "code": 317,
+      "name": "SubAccountLimitError",
+      "msg": "Sub account limit reached, use next sub account"
+    },
+    {
+      "code": 318,
+      "name": "NoSubAccountError",
+      "msg": "No sub accounts present to add user"
     }
   ],
   "metadata": {
-    "address": "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+    "address": "GzksvRZa5jTbWHUrS7xvDaCeR4nGKaEoqVZ3ieVnUC3W"
   }
 }

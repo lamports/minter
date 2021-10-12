@@ -14,14 +14,22 @@ export class RpcCalls {
     //console.log(cluster);
   }
 
-  async initializeRouter(routerProgramID: string, routerIdlPath: string, routerSecretKeyFilePath: string, externalWallet: string): Promise<Keypair> {
+  async initializeRouter(
+    vaultProgramID: string,
+    vaultIdlPath: string,
+    routerProgramID: string,
+    routerIdlPath: string,
+    routerSecretKeyFilePath: string,
+    externalWallet: string,
+  ): Promise<Keypair> {
     try {
       const routerBuilder = new ProgramBuilder(this._cluster, this._walletPath, routerProgramID, routerIdlPath);
+      const vaultBuilder = new ProgramBuilder(this._cluster, this._walletPath, vaultProgramID, vaultIdlPath);
 
       const routerProgram = routerBuilder.program;
       const routerAccount: Keypair = routerBuilder.getKeypair(routerSecretKeyFilePath);
 
-      await routerProgram.rpc.initializeRouter({
+      await routerProgram.rpc.initializeRouter(vaultBuilder.program.programId, {
         accounts: {
           routerAccount: routerAccount.publicKey,
           //authority
@@ -103,18 +111,15 @@ export class RpcCalls {
   ): Promise<void> {
     try {
       const routerBuilder = new ProgramBuilder(this._cluster, this._walletPath, routerProgramID, routerIdlPath);
-      const vaultBuilder = new ProgramBuilder(this._cluster, this._walletPath, vaultProgramID, vaultIdlPath);
 
       const routerProgram = routerBuilder.program;
       const routerAccount: Keypair = routerBuilder.getKeypair(routerSecretKeyFileName);
-
-      const vaultProgram = vaultBuilder.program;
 
       const subAccounts: Array<any> = [];
       vaultSecretFileNames.forEach(vaultSecretFileName => {
         const subAccount = {
           nftSubAccount: routerBuilder.getKeypair(vaultSecretFileName).publicKey,
-          nftSubProgramId: vaultProgram.programId,
+          currentSubAccountIndex: 0,
         };
         subAccounts.push(subAccount);
       });
