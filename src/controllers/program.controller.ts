@@ -15,7 +15,8 @@ class ProgramController {
 
   public callMinter = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      await callMinter();
+      //await callMinter();
+
       res.sendStatus(200);
     } catch (err) {
       next(err);
@@ -25,6 +26,15 @@ class ProgramController {
   public crank = async (_req: Request, res: Response, next: NextFunction) => {
     try {
       await startCrank();
+      res.sendStatus(200);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public addUserTest = async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      //await addUser();
       res.sendStatus(200);
     } catch (err) {
       next(err);

@@ -1,3 +1,6 @@
+import { UserDao, UserInput } from '@/daos/User';
+import { IMongoUser } from '@/models/User';
+import { logger } from '@/utils/logger';
 import * as anchor from '@project-serum/anchor';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { getImagesAndMetadata, mintNFT } from './nft/minter';
@@ -16,6 +19,7 @@ import { ProgramBuilder } from './program/program.builder';
 
 export type StringPublicKey = string;
 export const EXTENSION_PNG = '.png';
+const userDao = new UserDao();
 
 class Crank {
   private readonly _cluster;
@@ -38,10 +42,12 @@ class Crank {
 
       const nftSubAccount: NftSubAccount = routerData.data.subAccounts[routerData.data.currentAccountIndex];
 
-      //console.log(nftSubAccount);
+      logger.info('Current Nft Sub account is {} ', nftSubAccount);
 
       if (nftSubAccount.currentSubAccountIndex >= 240) {
+        // this has to be handled in UI because CPI doesn't return value in programs
         this.updateCurrentAccountIndex(routerBuilder, routerAccount, routerBuilder._wallet);
+        return;
       }
 
       const vaultAccount: PublicKey = nftSubAccount.nftSubAccount;
@@ -49,41 +55,68 @@ class Crank {
       const userVaultAccount: UserVaultAccount = (await vaultBuilder.program.account.userVaultAccount.fetch(vaultAccount)) as UserVaultAccount;
 
       const userPubKeyToMint: PublicKey = userVaultAccount.usersPubKey[nftSubAccount.currentSubAccountIndex];
-      const imagesPath: string = process.env.IMAGES_FOLDER == undefined ? '../../../images' : process.env.IMAGES_FOLDER;
 
       //store the userPublicKey in DB
+      const newUser: UserInput = {
+        name: userPubKeyToMint.toString(),
+        metadataAccount: null,
+        arweaveLink: null,
+      };
 
-      const files = getImagesAndMetadata(0, 1, imagesPath);
+      const user = await this.addUser(newUser);
+      logger.info('User added , ', user);
+      // get the currentIndex from routerData
+      const currentIndex = routerData.config.itemsAvailable;
+      //const currentIndex = 0; // ------------------------------------------------------------>>>>>>>>>> CHANGE THIS LATERRRRR
+      const imagesPath: string = process.env.IMAGES_FOLDER == undefined ? '../../../images' : process.env.IMAGES_FOLDER;
+      const files = getImagesAndMetadata(currentIndex, 1, imagesPath);
 
       files.forEach(element => {
-        console.log(element);
+        logger.info('Files ', element);
       });
 
       const anchorWallet = new anchor.Wallet(routerBuilder._wallet);
-      //anchorWallet.payer
 
-      //const connect = routerBuilder.provider.connection;
-      //console.log(await connect.getBalance(routerBuilder._wallet.publicKey));
+      /***********************************************ONLY FOR TESTING****************************************************************************/
+      // const cluster: string = process.env.DEV_NET == undefined ? 'http://localhost:8899' : process.env.DEV_NET;
+      // const walletAddressPath: string = process.env.PROGRAM_WALLET == undefined ? '../../../env/program_wallet.json' : process.env.PROGRAM_WALLET;
+      // const testProvider = getProvider(cluster, walletAddressPath);
+      // const nftResult = await mintNFT(testProvider.connection, anchorWallet, files[0], 'devnet', 1);
+      /***********************************************ONLY FOR TESTING****************************************************************************/
+      let retry = 3;
+      while (retry > 0) {
+        const nftResult = await mintNFT(routerBuilder.provider.connection, anchorWallet, files[0], 'devnet', 1);
+        logger.info('NFT RESULT : {} ', nftResult);
 
-      const cluster: string = process.env.DEV_NET == undefined ? 'http://localhost:8899' : process.env.DEV_NET;
-      const walletAddressPath: string = process.env.PROGRAM_WALLET == undefined ? '../../../env/program_wallet.json' : process.env.PROGRAM_WALLET;
-      const testProvider = getProvider(cluster, walletAddressPath);
+        if (nftResult.metadataAccount && nftResult.arweaveLink !== undefined) {
+          const user = await userDao.getOne(userPubKeyToMint.toString());
+          const updateUser: UserInput = {
+            name: user.name,
+            _id: user._id,
+            metadataAccount: nftResult.metadataAccount,
+            arweaveLink: nftResult.arweaveLink,
+          };
+          // update the userPublic key in DB
+          await userDao.update(updateUser);
 
-      //const metadataAccount = await mintNFT(routerBuilder.provider.connection, anchorWallet, files[0], 1);
-      const metadataAccount = await mintNFT(testProvider.connection, anchorWallet, files[0], 'devnet', 1);
+          const routerData2: RouterData = (await routerBuilder.program.account.routerData.fetch(routerAccount.publicKey)) as RouterData;
+          const nftSubAccount2: NftSubAccount = routerData2.data.subAccounts[routerData.data.currentAccountIndex];
+          if (nftSubAccount2.currentSubAccountIndex >= 240) {
+            this.updateCurrentAccountIndex(routerBuilder, routerAccount, routerBuilder._wallet);
+          }
+          break;
+        } else {
+          retry--;
+        }
+      }
 
-      console.log(metadataAccount);
-
-      // update the userPublic key in DB
-      const routerData2: RouterData = (await routerBuilder.program.account.routerData.fetch(routerAccount.publicKey)) as RouterData;
-      const nftSubAccount2: NftSubAccount = routerData2.data.subAccounts[routerData.data.currentAccountIndex];
-      if (nftSubAccount2.currentSubAccountIndex >= 240) {
-        this.updateCurrentAccountIndex(routerBuilder, routerAccount, routerBuilder._wallet);
+      if (retry === 0) {
+        throw Error('Failed to mint NFT');
       }
 
       //console.log(routerData);
     } catch (err) {
-      console.log(err);
+      logger.info(err.message);
     }
   }
 
@@ -95,19 +128,25 @@ class Crank {
       },
     });
   }
+
+  private addUser = async (newUser: UserInput): Promise<IMongoUser> => {
+    return userDao.add(newUser);
+  };
 }
 
-const getKeypair = (secretKeyFilePath: String): Keypair => {
-  return anchor.web3.Keypair.fromSecretKey(new Uint8Array(JSON.parse(require('fs').readFileSync(secretKeyFilePath, 'utf8'))));
-};
-const getProvider = (cluster: string, walletAddressPath: string): anchor.Provider => {
-  const connection = new anchor.web3.Connection(cluster, 'recent');
-  const walletWrapper = new anchor.Wallet(getKeypair(walletAddressPath));
-  const provider = new anchor.Provider(connection, walletWrapper, {
-    preflightCommitment: 'recent',
-  });
-  return provider;
-};
+// // only for testing
+// const getKeypair = (secretKeyFilePath: String): Keypair => {
+//   return anchor.web3.Keypair.fromSecretKey(new Uint8Array(JSON.parse(require('fs').readFileSync(secretKeyFilePath, 'utf8'))));
+// };
+// // only for testing
+// const getProvider = (cluster: string, walletAddressPath: string): anchor.Provider => {
+//   const connection = new anchor.web3.Connection(cluster, 'recent');
+//   const walletWrapper = new anchor.Wallet(getKeypair(walletAddressPath));
+//   const provider = new anchor.Provider(connection, walletWrapper, {
+//     preflightCommitment: 'recent',
+//   });
+//   return provider;
+// };
 
 const startCrank = async () => {
   const routerProgramID = process.env.ROUTER_PROGRAM_ID;

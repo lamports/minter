@@ -95,7 +95,8 @@ export const mintNFT = async (
   maxSupply?: number,
 ): Promise<{
   metadataAccount: StringPublicKey | undefined;
-} | void> => {
+  arweaveLink: string;
+}> => {
   if (!wallet?.publicKey) return;
 
   const metadataJSON = {
@@ -269,7 +270,7 @@ export const mintNFT = async (
   console.log('META DATAAA ACCCOUNT ', metadataAccount);
 
   //return undefined;
-  return { metadataAccount };
+  return { metadataAccount, arweaveLink };
 };
 
 const prepPayForFilesTxn = async (

@@ -45,7 +45,7 @@ export const initialize = async (next: NextFunction) => {
 
     let i = 0;
     let j = 10;
-
+    // add 10 accounts at a time due to the rpc limits
     while (i < maxVaultAccounts) {
       if (j > maxVaultAccounts) {
         j = maxVaultAccounts;

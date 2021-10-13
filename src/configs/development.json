@@ -5,7 +5,7 @@
         "database": "mongoose",
         "port": 27017
     },
-    "secretKey": "secretKey",
+    "secretKey": "mehulNftProjectSecret",
     "log": {
         "format": "dev",
         "dir": "../logs"
