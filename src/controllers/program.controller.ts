@@ -1,6 +1,6 @@
 import callMinter from '../web3/nft/call.minter';
 import { initialize } from '../web3/setup/initial.setup';
-import startCrank from '../web3/crank';
+import jobScheduler from '../web3/crank';
 import { NextFunction, Request, Response } from 'express';
 
 class ProgramController {
@@ -25,7 +25,7 @@ class ProgramController {
 
   public crank = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      await startCrank();
+      await jobScheduler();
       res.sendStatus(200);
     } catch (err) {
       next(err);

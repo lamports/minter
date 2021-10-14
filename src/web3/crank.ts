@@ -6,6 +6,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 import { getImagesAndMetadata, mintNFT } from './nft/minter';
 import { NftSubAccount, RouterData, UserVaultAccount } from './program/models';
 import { ProgramBuilder } from './program/program.builder';
+import { CronJob } from 'cron';
 
 // steps
 // 1. fetch routerData, current index and current account
@@ -30,8 +31,10 @@ class Crank {
     this._walletPath = walletPath;
   }
 
-  async start(routerProgramID: string, routerIdlPath: string, routerSecretKeyPath: string, vaultProgramID: string, vaultIdlPath: string) {
+  async start(routerProgramID: string, routerIdlPath: string, routerSecretKeyPath: string, vaultProgramID: string, vaultIdlPath: string, job: any) {
     try {
+      logger.info('Running cranking');
+
       const routerBuilder = new ProgramBuilder(this._cluster, this._walletPath, routerProgramID, routerIdlPath);
       const vaultBuilder = new ProgramBuilder(this._cluster, this._walletPath, vaultProgramID, vaultIdlPath);
 
@@ -114,6 +117,7 @@ class Crank {
         throw Error('Failed to mint NFT');
       }
 
+      job.start();
       //console.log(routerData);
     } catch (err) {
       logger.info(err.message);
@@ -148,7 +152,7 @@ class Crank {
 //   return provider;
 // };
 
-const startCrank = async () => {
+const startCrank = async (job: any) => {
   const routerProgramID = process.env.ROUTER_PROGRAM_ID;
   const routerIdlPath = process.env.ROUTER_IDL_PATH;
   const routerSecretKeyPath = process.env.ROUTER_SECRET;
@@ -156,7 +160,26 @@ const startCrank = async () => {
   const vaultProgramID = process.env.VAULT_PROGRAM_ID;
   const vaultIdlPath = process.env.VAULT_IDL_PATH;
   const crank = new Crank(process.env.LOCAL_NET, process.env.PROGRAM_WALLET);
-  crank.start(routerProgramID, routerIdlPath, routerSecretKeyPath, vaultProgramID, vaultIdlPath);
+  crank.start(routerProgramID, routerIdlPath, routerSecretKeyPath, vaultProgramID, vaultIdlPath, job);
 };
 
-export default startCrank;
+const jobScheduler = () => {
+  let job;
+
+  // Create new cronjob
+  // eslint-disable-next-line prefer-const
+  job = new CronJob({
+    cronTime: '*/1 * * * *',
+    onTick: async () => {
+      logger.info('Running every 1 minutes');
+      await startCrank(job);
+    },
+    start: false,
+    timeZone: 'America/Los_Angeles',
+  });
+  logger.info('Starting the job, running every 3 minutes');
+  // Auto start your cronjob
+  job.start();
+};
+
+export default jobScheduler;
