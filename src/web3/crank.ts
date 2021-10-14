@@ -69,7 +69,7 @@ class Crank {
       const user = await this.addUser(newUser);
       logger.info('User added , ', user);
       // get the currentIndex from routerData
-      const currentIndex = routerData.config.itemsAvailable;
+      const currentIndex = routerData.config.itemsAvailable; // we will give away the mintings in the reverse order.
       //const currentIndex = 0; // ------------------------------------------------------------>>>>>>>>>> CHANGE THIS LATERRRRR
       const imagesPath: string = process.env.IMAGES_FOLDER == undefined ? '../../../images' : process.env.IMAGES_FOLDER;
       const files = getImagesAndMetadata(currentIndex, 1, imagesPath);
