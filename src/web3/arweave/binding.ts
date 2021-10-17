@@ -45,48 +45,48 @@ export const createArweaveNftTransaction = async (
   const payerBalance = await getBalance(payerKey);
   const payerBalanceInAr = arweave.ar.winstonToAr(payerBalance);
   // check if balance in more than transaction cost
-  //if (Number.parseFloat(payerBalanceInAr) > costInWinston) {
-  //create image transaction and send it
-  const imageTrnx = await arweave.createTransaction({
-    data: imageBuffer,
-  });
-  imageTrnx.addTag('Content-Type', 'image/png');
-  await arweave.transactions.sign(imageTrnx, payerKey);
-
-  const imageResult = await arweave.transactions.post(imageTrnx);
-
-  if (imageResult.status === 200) {
-    const updatedMetadataJson = updateMetadata(metadataJsonBuffer, imageTrnx.id);
-    const updatedMetadataJsonBuffer = Buffer.from(JSON.stringify(updatedMetadataJson));
-
-    const metadataTrnx = await arweave.createTransaction({
-      data: updatedMetadataJsonBuffer,
+  if (Number.parseFloat(payerBalanceInAr) > costInWinston) {
+    //create image transaction and send it
+    const imageTrnx = await arweave.createTransaction({
+      data: imageBuffer,
     });
+    imageTrnx.addTag('Content-Type', 'image/png');
+    await arweave.transactions.sign(imageTrnx, payerKey);
 
-    metadataTrnx.addTag('Content-Type', 'application/json');
+    const imageResult = await arweave.transactions.post(imageTrnx);
 
-    await arweave.transactions.sign(metadataTrnx, payerKey);
-    const metaResult = await arweave.transactions.post(metadataTrnx);
+    if (imageResult.status === 200) {
+      const updatedMetadataJson = updateMetadata(metadataJsonBuffer, imageTrnx.id);
+      const updatedMetadataJsonBuffer = Buffer.from(JSON.stringify(updatedMetadataJson));
 
-    const result = [
-      {
-        filename: 'image.png',
-        success: imageResult.statusText,
-        transactionId: imageTrnx.id,
-      },
-      {
-        filename: 'manifest.json',
-        success: metaResult.statusText,
-        transactionId: metadataTrnx.id,
-      },
-    ];
-    return result;
+      const metadataTrnx = await arweave.createTransaction({
+        data: updatedMetadataJsonBuffer,
+      });
+
+      metadataTrnx.addTag('Content-Type', 'application/json');
+
+      await arweave.transactions.sign(metadataTrnx, payerKey);
+      const metaResult = await arweave.transactions.post(metadataTrnx);
+
+      const result = [
+        {
+          filename: 'image.png',
+          success: imageResult.statusText,
+          transactionId: imageTrnx.id,
+        },
+        {
+          filename: 'manifest.json',
+          success: metaResult.statusText,
+          transactionId: metadataTrnx.id,
+        },
+      ];
+      return result;
+    } else {
+      throw Error('Could not store the image');
+    }
   } else {
-    throw Error('Could not store the image');
+    throw Error('Not enough Winstons, please purchase some arweaves');
   }
-  // } else {
-  //   throw Error('Not enough Winstons, please purchase some arweaves');
-  // }
 };
 
 const updateMetadata = (metadataJSONBuffer: Buffer, imageTransactionId: string) => {
