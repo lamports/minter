@@ -1,7 +1,8 @@
 import { Keypair, TransactionInstruction, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
-import { serialize } from 'borsh';
+import { serialize, BinaryReader, BinaryWriter } from 'borsh';
 import BN from 'bn.js';
 import { MintLayout, Token } from '@solana/spl-token';
+import base58 from 'bs58';
 
 export type StringPublicKey = string;
 const TOKEN_ADDRESS = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
@@ -179,7 +180,7 @@ export const createMetadata = async (
       toPublicKey(metadataProgramId),
     )
   )[0];
-  console.log('Data', data);
+  console.log('Data in Create Metadata', data);
   const value = new CreateMetadataArgs({ data, isMutable: true });
   const txnData = Buffer.from(serialize(METADATA_SCHEMA, value));
 
@@ -232,10 +233,10 @@ export const createMetadata = async (
 };
 export class Creator {
   address: StringPublicKey;
-  verified: boolean;
   share: number;
+  verified: number;
 
-  constructor(args: { address: StringPublicKey; verified: boolean; share: number }) {
+  constructor(args: { address: StringPublicKey; share: number; verified: number }) {
     this.address = args.address;
     this.verified = args.verified;
     this.share = args.share;
@@ -518,17 +519,6 @@ export const METADATA_SCHEMA = new Map<any, any>([
   ],
 
   [
-    Creator,
-    {
-      kind: 'struct',
-      fields: [
-        ['address', 'pubkeyAsString'],
-        ['verified', 'u8'],
-        ['share', 'u8'],
-      ],
-    },
-  ],
-  [
     EditionMarker,
     {
       kind: 'struct',
@@ -563,6 +553,17 @@ export const METADATA_SCHEMA = new Map<any, any>([
         ['uri', 'string'],
         ['sellerFeeBasisPoints', 'u16'],
         ['creators', { kind: 'option', type: [Creator] }],
+      ],
+    },
+  ],
+  [
+    Creator,
+    {
+      kind: 'struct',
+      fields: [
+        ['address', 'pubkeyAsString'],
+        ['share', 'u8'],
+        ['verified', 'u8'],
       ],
     },
   ],
@@ -652,3 +653,29 @@ export const createMasterEdition = async (
     }),
   );
 };
+
+export const extendBorsh = () => {
+  (BinaryReader.prototype as any).readPubkey = function () {
+    const reader = this as unknown as BinaryReader;
+    const array = reader.readFixedArray(32);
+    return new PublicKey(array);
+  };
+
+  (BinaryWriter.prototype as any).writePubkey = function (value: PublicKey) {
+    const writer = this as unknown as BinaryWriter;
+    writer.writeFixedArray(value.toBuffer());
+  };
+
+  (BinaryReader.prototype as any).readPubkeyAsString = function () {
+    const reader = this as unknown as BinaryReader;
+    const array = reader.readFixedArray(32);
+    return base58.encode(array) as StringPublicKey;
+  };
+
+  (BinaryWriter.prototype as any).writePubkeyAsString = function (value: StringPublicKey) {
+    const writer = this as unknown as BinaryWriter;
+    writer.writeFixedArray(base58.decode(value));
+  };
+};
+
+extendBorsh();
