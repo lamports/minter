@@ -8,6 +8,9 @@ export interface MetadataJSON {
   attributes: Attribute[];
   properties: Property;
   collection: Collection;
+  animation_url: string | undefined;
+  //creators: Creator[] | null;
+  //sellerFeeBasisPoints: number;
 }
 
 export interface Attribute {
@@ -29,6 +32,7 @@ export interface MetaFile {
 export interface Creator {
   address: string;
   share: number;
+  verified: number;
 }
 
 export interface Collection {

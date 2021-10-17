@@ -22,7 +22,7 @@ import crypto from 'crypto';
 import { getAssetCostToStore } from './fee.arweave';
 import { logger } from '@/utils/logger';
 import getNewWallet, { createArweaveNftTransaction } from '../arweave/binding';
-
+import { MetadataJSON } from '../arweave/Metadata';
 export const AR_SOL_HOLDER_ID = new PublicKey('HvwC9QSAzvGXhhVrgPmauVwFWcYZhne3hVot9EbHuFTm');
 export const MEMO_PROGRAM_ID = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
 export const TOKEN_PROGRAM_ID_STR = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
@@ -43,18 +43,18 @@ interface ImageMetadata {
   imagePath: string;
 }
 
-export interface MetadataJSON {
-  name: string;
-  symbol: string;
-  description: string;
-  image: string | undefined;
-  animation_url: string | undefined;
-  attributes: Attribute[] | undefined;
-  external_url: string;
-  properties: any;
-  creators: Creator[] | null;
-  sellerFeeBasisPoints: number;
-}
+// export interface MetadataJSON {
+//   name: string;
+//   symbol: string;
+//   description: string;
+//   image: string | undefined;
+//   animation_url: string | undefined;
+//   attributes: Attribute[] | undefined;
+//   external_url: string;
+//   properties: any;
+//   creators: Creator[] | null;
+//   sellerFeeBasisPoints: number;
+// }
 
 export const getImagesAndMetadata = (currentFileIndex: number, requiredFiles: number, imagesPath: string): ImageMetadata[] => {
   const newFiles: string[] = [];
@@ -108,23 +108,22 @@ export const mintNFT = async (
     name: imageAndMetaData.manifestJson.name,
     symbol: imageAndMetaData.manifestJson.symbol,
     description: imageAndMetaData.manifestJson.description,
-    seller_fee_basis_points: imageAndMetaData.manifestJson.sellerFeeBasisPoints,
-    sellerFeeBasisPoints: imageAndMetaData.manifestJson.sellerFeeBasisPoints,
+    seller_fee_basis_points: imageAndMetaData.manifestJson.seller_fee_basis_points,
+    sellerFeeBasisPoints: imageAndMetaData.manifestJson.seller_fee_basis_points,
     image: imageAndMetaData.manifestJson.image,
-    animation_url: imageAndMetaData.manifestJson.animation_url,
+    animation_url: imageAndMetaData.manifestJson?.animation_url,
     attributes: imageAndMetaData.manifestJson.attributes,
     external_url: imageAndMetaData.manifestJson.external_url,
     properties: {
       ...imageAndMetaData.manifestJson.properties,
-      creators: imageAndMetaData.manifestJson.creators?.map(creator => {
+      creators: imageAndMetaData.manifestJson.properties.creators?.map(creator => {
         return {
           address: creator.address,
           share: creator.share,
         };
       }),
     },
-    creators: imageAndMetaData.manifestJson.creators,
-    //sellerFeeBasisPoints: imageAndMetaData.manifestJson.sellerFeeBasisPoints,
+    //creators: imageAndMetaData.manifestJson.properties.creators,
   };
 
   const imageBuffer = fs.readFileSync(imageAndMetaData.imagePath);
@@ -148,8 +147,8 @@ export const mintNFT = async (
     mintRent,
     0,
     // Some weird bug with phantom where it's public key doesnt mesh with data encode wellff
-    toPublicKey(programWallet.publicKey),
-    toPublicKey(programWallet.publicKey),
+    toPublicKey(payerPublicKeyString),
+    toPublicKey(payerPublicKeyString),
     signers,
   ).toBase58();
 
@@ -168,14 +167,25 @@ export const mintNFT = async (
     toPublicKey(mintKey),
   );
 
+  // TODOOOOOO : CREATORS PROBLEMM
+  const creators = metadataJSON.properties.creators.map(
+    creator =>
+      new Creator({
+        address: creator.address,
+        verified: 1,
+        share: creator.share,
+      }),
+  );
+
+  const newData = new Data({
+    symbol: metadataJSON.symbol,
+    name: metadataJSON.name,
+    uri: ' '.repeat(64), // size of url for arweave
+    sellerFeeBasisPoints: metadataJSON.seller_fee_basis_points,
+    creators: null, //// ---->>>>>>>>> THIS NEEDS TO BE FIXEDDD
+  });
   const metadataAccount = await createMetadata(
-    new Data({
-      symbol: metadataJSON.symbol,
-      name: metadataJSON.name,
-      uri: ' '.repeat(64), // size of url for arweave
-      sellerFeeBasisPoints: metadataJSON.seller_fee_basis_points,
-      creators: metadataJSON.properties.creators,
-    }),
+    newData,
     programWallet.publicKey.toBase58(),
     mintKey,
     programWallet.publicKey.toBase58(),
@@ -202,13 +212,17 @@ export const mintNFT = async (
     (m: { filename: string }) => m.filename === 'manifest.json',
   );
 
-  console.log(metadataFile);
+  logger.info(metadataFile);
 
   //TODO: Wait for transaction to confirm on ARweave side
 
-  console.log('META FILEEE', metadataFile);
-  const arweaveLink = `https://arweave.net/${metadataFile.transactionId}`;
+  logger.info('META FILEEE', metadataFile);
+  const arweaveLink = `https://arweave.net/${metadataFile[0].transactionId}`;
   const metadata = JSON.parse(manifestJsonBuffer.toString());
+
+  logger.info('THE METADATA IS S');
+  logger.info(metadata);
+
   if (!metadataFile?.transactionId) {
     const updateInstructions: TransactionInstruction[] = [];
     const updateSigners: Keypair[] = [];
@@ -224,7 +238,7 @@ export const mintNFT = async (
       undefined,
       undefined,
       mintKey,
-      programWallet.publicKey.toBase58(),
+      payerPublicKeyString,
       updateInstructions,
       metadataAccount,
     );
@@ -235,13 +249,14 @@ export const mintNFT = async (
     updateInstructions.push(
       Token.createMintToInstruction(TOKEN_PROGRAM_ID, toPublicKey(mintKey), toPublicKey(recipientKey), toPublicKey(payerPublicKeyString), [], 1),
     );
+
     // // In this instruction, mint authority will be removed from the main mint, while
     // // minting authority will be maintained for the Printing mint (which we want.)
     await createMasterEdition(
       maxSupply !== undefined ? new anchor.BN(maxSupply) : undefined,
       mintKey,
-      programWallet.publicKey.toBase58(),
-      programWallet.publicKey.toBase58(),
+      payerPublicKeyString,
+      payerPublicKeyString,
       payerPublicKeyString,
       updateInstructions,
     );
@@ -249,6 +264,28 @@ export const mintNFT = async (
     const txids = await sendTransactionWithRetry(connection, programWallet, updateInstructions, updateSigners);
     console.log('Transaction ID , ', txids);
     console.log('META DATAAA ACCCOUNT ', metadataAccount);
+
+    const transferInstruction: TransactionInstruction[] = [];
+
+    const minterToKey = (
+      await findProgramAddress(
+        [mintToPubkey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), toPublicKey(mintKey).toBuffer()],
+        new PublicKey(ASSOCIATED_PROGRAM_ID),
+      )
+    )[0];
+
+    createAssociatedTokenAccountInstruction(
+      transferInstruction,
+      toPublicKey(minterToKey),
+      programWallet.publicKey,
+      mintToPubkey,
+      toPublicKey(mintKey),
+    );
+    transferInstruction.push(
+      Token.createTransferInstruction(TOKEN_PROGRAM_ID, toPublicKey(recipientKey), toPublicKey(minterToKey), programWallet.publicKey, [], 1),
+    );
+    const txid2 = await sendTransactionWithRetry(connection, programWallet, transferInstruction, updateSigners);
+    console.log('Transaction ID , ', txid2);
   }
 
   //return undefined;
