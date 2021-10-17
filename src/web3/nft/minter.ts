@@ -148,25 +148,19 @@ export const mintNFT = async (
     mintRent,
     0,
     // Some weird bug with phantom where it's public key doesnt mesh with data encode wellff
-    toPublicKey(programWallet.publicKey),
-    toPublicKey(programWallet.publicKey),
+    toPublicKey(payerPublicKeyString),
+    toPublicKey(payerPublicKeyString),
     signers,
   ).toBase58();
 
   const recipientKey = (
     await findProgramAddress(
-      [programWallet.publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), toPublicKey(mintKey).toBuffer()],
+      [mintToPubkey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), toPublicKey(mintKey).toBuffer()],
       new PublicKey(ASSOCIATED_PROGRAM_ID),
     )
   )[0];
 
-  createAssociatedTokenAccountInstruction(
-    instructions,
-    toPublicKey(recipientKey),
-    programWallet.publicKey,
-    programWallet.publicKey,
-    toPublicKey(mintKey),
-  );
+  createAssociatedTokenAccountInstruction(instructions, toPublicKey(recipientKey), programWallet.publicKey, mintToPubkey, toPublicKey(mintKey));
 
   const metadataAccount = await createMetadata(
     new Data({
@@ -221,10 +215,10 @@ export const mintNFT = async (
         creators: metadata.creators,
         sellerFeeBasisPoints: metadata.seller_fee_basis_points,
       }),
-      undefined,
+      mintToPubkey.toBase58(),
       undefined,
       mintKey,
-      programWallet.publicKey.toBase58(),
+      mintToPubkey.toBase58(),
       updateInstructions,
       metadataAccount,
     );
@@ -240,8 +234,8 @@ export const mintNFT = async (
     await createMasterEdition(
       maxSupply !== undefined ? new anchor.BN(maxSupply) : undefined,
       mintKey,
-      programWallet.publicKey.toBase58(),
-      programWallet.publicKey.toBase58(),
+      mintToPubkey.toBase58(),
+      mintToPubkey.toBase58(),
       payerPublicKeyString,
       updateInstructions,
     );
