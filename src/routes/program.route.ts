@@ -14,7 +14,7 @@ class ProgramRoute implements Routes {
     this.router.get(`${this.path}/initialize`, this.programController.initProgram);
     this.router.get(`${this.path}/start/crank`, this.programController.crank);
     this.router.get(`${this.path}/add/user/test`, this.programController.addUserTest);
-    //this.router.get(`${this.path}/test/nft`, this.programController.nftTest);
+    this.router.get(`${this.path}/test/nft`, this.programController.nftTest);
   }
 }
 

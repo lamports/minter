@@ -1,6 +1,6 @@
 import { getImagesAndMetadata, mintNFT } from './minter';
 import * as anchor from '@project-serum/anchor';
-import { Keypair } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { StringPublicKey } from './accounts';
 
 const getKeypair = (secretKeyFilePath: String): Keypair => {
@@ -31,8 +31,9 @@ const callMinter = async (): Promise<[StringPublicKey | undefined, string]> => {
   const provider = getProvider(cluster, walletAddressPath);
 
   const files = getImagesAndMetadata(0, 1, imagesPath);
+  const testToMinter = new PublicKey('HzeJv4htfH9upLy6g4ygn8zFjrbdy5VbUqkpouVguVHz');
 
-  const metaDataAccount: any = await mintNFT(provider.connection, walletWrapper, files[0], 'devnet', 1);
+  const metaDataAccount: any = await mintNFT(provider.connection, walletWrapper, testToMinter, files[0], 'devnet', 1);
 
   const walletPublicAddress = walletWrapper.publicKey.toString();
 

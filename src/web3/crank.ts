@@ -82,7 +82,7 @@ class Crank {
 
       let retry = 3;
       while (retry > 0) {
-        const nftResult = await mintNFT(routerBuilder.provider.connection, anchorWallet, files[0], 'devnet', 1);
+        const nftResult = await mintNFT(routerBuilder.provider.connection, anchorWallet, userPubKeyToMint, files[0], 'devnet', 1);
         logger.info('NFT RESULT : {} ', nftResult);
 
         if (nftResult.metadataAccount && nftResult.arweaveLink !== undefined) {
@@ -146,19 +146,26 @@ const getProvider = (cluster: string, walletAddressPath: string): anchor.Provide
   return provider;
 };
 
-// export const startTest = async () => {
-//   const routerProgramID = process.env.ROUTER_PROGRAM_ID;
-//   const routerIdlPath = process.env.ROUTER_IDL_PATH;
-//   const routerBuilder = new ProgramBuilder(process.env.LOCAL_NET, process.env.PROGRAM_WALLET, routerProgramID, routerIdlPath);
-//   const imagesPath: string = process.env.IMAGES_FOLDER == undefined ? '../../../images' : process.env.IMAGES_FOLDER;
-//   const files = getImagesAndMetadata(0, 1, imagesPath);
-//   const anchorWallet = new anchor.Wallet(routerBuilder._wallet);
-//   const cluster: string = process.env.DEV_NET == undefined ? 'http://localhost:8899' : process.env.DEV_NET;
-//   const walletAddressPath: string = process.env.PROGRAM_WALLET == undefined ? '../../../env/program_wallet.json' : process.env.PROGRAM_WALLET;
-//   const testProvider = getProvider(cluster, walletAddressPath);
-//   const nftResult = await mintNFT(testProvider.connection, anchorWallet, files[0], 'devnet', 1);
-//   logger.info(nftResult);
-// };
+export const startTest = async () => {
+  const routerProgramID = process.env.ROUTER_PROGRAM_ID;
+  const routerIdlPath = process.env.ROUTER_IDL_PATH;
+  const routerBuilder = new ProgramBuilder(process.env.LOCAL_NET, process.env.PROGRAM_WALLET, routerProgramID, routerIdlPath);
+  const imagesPath: string = process.env.IMAGES_FOLDER == undefined ? '../../../images' : process.env.IMAGES_FOLDER;
+  const files = getImagesAndMetadata(0, 1, imagesPath);
+  const anchorWallet = new anchor.Wallet(routerBuilder._wallet);
+  const cluster: string = process.env.DEV_NET == undefined ? 'http://localhost:8899' : process.env.DEV_NET;
+  const walletAddressPath: string = process.env.PROGRAM_WALLET == undefined ? '../../../env/program_wallet.json' : process.env.PROGRAM_WALLET;
+  const testProvider = getProvider(cluster, walletAddressPath);
+  const nftResult = await mintNFT(
+    testProvider.connection,
+    anchorWallet,
+    new PublicKey('HzeJv4htfH9upLy6g4ygn8zFjrbdy5VbUqkpouVguVHz'),
+    files[0],
+    'devnet',
+    1,
+  );
+  logger.info(nftResult);
+};
 
 const startCrank = async (job: any) => {
   const routerProgramID = process.env.ROUTER_PROGRAM_ID;
