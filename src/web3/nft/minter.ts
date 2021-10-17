@@ -17,13 +17,17 @@ import {
 import { sendTransactionWithRetry } from './transactions';
 import fs from 'fs';
 import * as path from 'path';
-import { LocalFileData } from 'get-file-object-from-local-path';
 import FormData from 'form-data';
 import crypto from 'crypto';
 import { getAssetCostToStore } from './fee.arweave';
 import { logger } from '@/utils/logger';
+import getNewWallet, { createArweaveNftTransaction } from '../arweave/binding';
 
 export const AR_SOL_HOLDER_ID = new PublicKey('HvwC9QSAzvGXhhVrgPmauVwFWcYZhne3hVot9EbHuFTm');
+export const MEMO_PROGRAM_ID = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+export const TOKEN_PROGRAM_ID_STR = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+export const ASSOCIATED_PROGRAM_ID = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+
 export const EXTENSION_PNG = '.png';
 const RESERVED_TXN_MANIFEST = 'manifest.json';
 
@@ -89,7 +93,8 @@ export const getImagesAndMetadata = (currentFileIndex: number, requiredFiles: nu
 
 export const mintNFT = async (
   connection: Connection,
-  wallet: anchor.Wallet | undefined,
+  programWallet: anchor.Wallet | undefined,
+  mintToPubkey: PublicKey,
   imageAndMetaData: ImageMetadata,
   env: string,
   maxSupply?: number,
@@ -97,7 +102,7 @@ export const mintNFT = async (
   metadataAccount: StringPublicKey | undefined;
   arweaveLink: string;
 }> => {
-  if (!wallet?.publicKey) return;
+  if (!programWallet?.publicKey && !mintToPubkey) return;
 
   const metadataJSON = {
     name: imageAndMetaData.manifestJson.name,
@@ -122,50 +127,46 @@ export const mintNFT = async (
     //sellerFeeBasisPoints: imageAndMetaData.manifestJson.sellerFeeBasisPoints,
   };
 
-  const imageFile: File = (await new LocalFileData(imageAndMetaData.imagePath)) as File;
-  const metaJsonFile: File = await new LocalFileData(imageAndMetaData.manifestPath);
+  const imageBuffer = fs.readFileSync(imageAndMetaData.imagePath);
+  const manifestJsonBuffer = fs.readFileSync(imageAndMetaData.manifestPath);
 
-  //const filey = fs.readFileSync(imageAndMetaData.imagePath);
+  const { instructions: pushInstructions, signers: pushSigners } = await prepForMemo(imageBuffer, manifestJsonBuffer);
 
-  //new filey
-
-  const realFiles: File[] = [];
-  realFiles.push(imageFile);
-  realFiles.push(metaJsonFile);
-
-  //log.error('FILEEE SIZEEE , {}', sizeof(realFiles[0]));
-
-  const { instructions: pushInstructions, signers: pushSigners } = await prepPayForFilesTxn(wallet, realFiles);
-
-  const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+  const TOKEN_PROGRAM_ID = new PublicKey(TOKEN_PROGRAM_ID_STR);
 
   // Allocate memory for the account
   const mintRent = await connection.getMinimumBalanceForRentExemption(MintLayout.span);
 
-  const payerPublicKey = wallet.publicKey.toBase58();
+  const payerPublicKeyString = programWallet.publicKey.toBase58();
   const instructions: TransactionInstruction[] = [...pushInstructions];
   const signers: Keypair[] = [...pushSigners];
 
   // This is only temporarily owned by wallet...transferred to program by createMasterEdition below
   const mintKey = createMint(
     instructions,
-    wallet.publicKey,
+    programWallet.publicKey,
     mintRent,
     0,
     // Some weird bug with phantom where it's public key doesnt mesh with data encode wellff
-    toPublicKey(payerPublicKey),
-    toPublicKey(payerPublicKey),
+    toPublicKey(programWallet.publicKey),
+    toPublicKey(programWallet.publicKey),
     signers,
   ).toBase58();
 
   const recipientKey = (
     await findProgramAddress(
-      [wallet.publicKey.toBuffer(), new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA').toBuffer(), toPublicKey(mintKey).toBuffer()],
-      new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
+      [programWallet.publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), toPublicKey(mintKey).toBuffer()],
+      new PublicKey(ASSOCIATED_PROGRAM_ID),
     )
   )[0];
 
-  createAssociatedTokenAccountInstruction(instructions, toPublicKey(recipientKey), wallet.publicKey, wallet.publicKey, toPublicKey(mintKey));
+  createAssociatedTokenAccountInstruction(
+    instructions,
+    toPublicKey(recipientKey),
+    programWallet.publicKey,
+    programWallet.publicKey,
+    toPublicKey(mintKey),
+  );
 
   const metadataAccount = await createMetadata(
     new Data({
@@ -175,14 +176,14 @@ export const mintNFT = async (
       sellerFeeBasisPoints: metadataJSON.seller_fee_basis_points,
       creators: metadataJSON.properties.creators,
     }),
-    payerPublicKey,
+    programWallet.publicKey.toBase58(),
     mintKey,
-    payerPublicKey,
+    programWallet.publicKey.toBase58(),
     instructions,
-    wallet.publicKey.toBase58(),
+    programWallet.publicKey.toBase58(),
   );
 
-  const { txid } = await sendTransactionWithRetry(connection, wallet, instructions, signers);
+  const { txid } = await sendTransactionWithRetry(connection, programWallet, instructions, signers);
 
   try {
     await connection.confirmTransaction(txid, 'max');
@@ -194,120 +195,88 @@ export const mintNFT = async (
   // await connection.confirmTransaction(txid, 'max');
   await connection.getParsedConfirmedTransaction(txid, 'confirmed');
 
-  // this means we're done getting AR txn setup. Ship it off to ARWeave!
-  const data = new FormData();
+  const payerKey = await getNewWallet();
+  const metadataResult = await createArweaveNftTransaction(payerKey, imageBuffer, manifestJsonBuffer);
 
-  const tags = realFiles.reduce((acc: Record<string, Array<{ name: string; value: string }>>, f) => {
-    acc[f.name] = [{ name: 'mint', value: mintKey }];
-    return acc;
-  }, {});
-  data.append('tags', JSON.stringify(tags));
-  data.append('transaction', txid);
-  const metadataContent = fs.readFileSync(imageAndMetaData.manifestPath).toString().replace('0', 'image').replace('0', 'image');
-  const metadata = JSON.parse(metadataContent);
+  const metadataFile = metadataResult.filter(m => m.filename === 'manifest.json');
 
-  const metadataBuffer = Buffer.from(JSON.stringify(metadata));
-
-  data.append('file[]', fs.createReadStream(imageAndMetaData.imagePath), {
-    filename: `image.png`,
-    contentType: 'image/png',
-  });
-  data.append('file[]', metadataBuffer, 'metadata.json');
-  data.append('env', env);
-  // data.append()
-
-  // TODO: convert to absolute file name for image
-  const result: any = (
-    await axios.post('https://us-central1-principal-lane-200702.cloudfunctions.net/uploadFile4', data, { headers: data.getHeaders() })
-  ).data;
-
-  console.log('RESULLTT ARWEAVEEE  {}', result);
-
-  const metadataFile = result['messages'].find((m: any) => m.filename === RESERVED_TXN_MANIFEST);
+  //TODO: Wait for transaction to confirm on ARweave side
 
   console.log('META FILEEE', metadataFile);
-
-  //if (metadataFile?.transactionId && wallet.publicKey) {
-  const updateInstructions: TransactionInstruction[] = [];
-  const updateSigners: Keypair[] = [];
-
-  // TODO: connect to testnet arweave
   const arweaveLink = `https://arweave.net/${metadataFile.transactionId}`;
+  const metadata = JSON.parse(manifestJsonBuffer.toString());
+  if (metadataFile?.transactionId && programWallet.publicKey) {
+    const updateInstructions: TransactionInstruction[] = [];
+    const updateSigners: Keypair[] = [];
 
-  await updateMetadata(
-    new Data({
-      name: metadata.name,
-      symbol: metadata.symbol,
-      uri: arweaveLink,
-      creators: metadata.creators,
-      sellerFeeBasisPoints: metadata.seller_fee_basis_points,
-    }),
-    undefined,
-    undefined,
-    mintKey,
-    payerPublicKey,
-    updateInstructions,
-    metadataAccount,
-  );
+    await updateMetadata(
+      new Data({
+        name: metadata.name,
+        symbol: metadata.symbol,
+        uri: arweaveLink,
+        creators: metadata.creators,
+        sellerFeeBasisPoints: metadata.seller_fee_basis_points,
+      }),
+      undefined,
+      undefined,
+      mintKey,
+      programWallet.publicKey.toBase58(),
+      updateInstructions,
+      metadataAccount,
+    );
 
-  updateInstructions.push(
-    Token.createMintToInstruction(TOKEN_PROGRAM_ID, toPublicKey(mintKey), toPublicKey(recipientKey), toPublicKey(payerPublicKey), [], 1),
-  );
-  // // In this instruction, mint authority will be removed from the main mint, while
-  // // minting authority will be maintained for the Printing mint (which we want.)
-  await createMasterEdition(
-    maxSupply !== undefined ? new anchor.BN(maxSupply) : undefined,
-    mintKey,
-    payerPublicKey,
-    payerPublicKey,
-    payerPublicKey,
-    updateInstructions,
-  );
+    updateInstructions.push(
+      Token.createMintToInstruction(TOKEN_PROGRAM_ID, toPublicKey(mintKey), toPublicKey(recipientKey), toPublicKey(payerPublicKeyString), [], 1),
+    );
+    // // In this instruction, mint authority will be removed from the main mint, while
+    // // minting authority will be maintained for the Printing mint (which we want.)
+    await createMasterEdition(
+      maxSupply !== undefined ? new anchor.BN(maxSupply) : undefined,
+      mintKey,
+      programWallet.publicKey.toBase58(),
+      programWallet.publicKey.toBase58(),
+      payerPublicKeyString,
+      updateInstructions,
+    );
 
-  const txids = await sendTransactionWithRetry(connection, wallet, updateInstructions, updateSigners);
-  //}
-  console.log('Transaction ID , ', txids);
-  console.log('META DATAAA ACCCOUNT ', metadataAccount);
+    const txids = await sendTransactionWithRetry(connection, programWallet, updateInstructions, updateSigners);
+    console.log('Transaction ID , ', txids);
+    console.log('META DATAAA ACCCOUNT ', metadataAccount);
+  }
 
   //return undefined;
   return { metadataAccount, arweaveLink };
 };
 
-const prepPayForFilesTxn = async (
-  wallet: anchor.Wallet,
-  files: File[],
+const prepForMemo = async (
+  imageBuffer: Buffer,
+  manifestJsonBuffer: Buffer,
 ): Promise<{
   instructions: TransactionInstruction[];
   signers: Keypair[];
 }> => {
-  const memo = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+  const memo = new PublicKey(MEMO_PROGRAM_ID);
   const instructions: TransactionInstruction[] = [];
   const signers: Keypair[] = [];
 
-  const arweaveFee = await getAssetCostToStore(files);
-
-  console.log('Arweave Fee in Sols', arweaveFee);
-
-  /* if (wallet.publicKey) {
-    instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: wallet.publicKey,
-        toPubkey: AR_SOL_HOLDER_ID,
-        lamports: 2300000, //arweaveFee,
-      }),
-    );
-  }*/
-  for (let i = 0; i < files.length; i++) {
-    const hashSum = crypto.createHash('sha256');
-    hashSum.update(JSON.stringify(files[i]));
-    const hex = hashSum.digest('hex');
-    const instruction = new TransactionInstruction({
-      keys: [],
-      programId: memo,
-      data: Buffer.from(hex),
-    });
-    instructions.push(instruction);
-  }
+  const hashSumForImage = crypto.createHash('sha256');
+  hashSumForImage.update(JSON.stringify(imageBuffer));
+  const instruction1 = new TransactionInstruction({
+    keys: [],
+    programId: memo,
+    data: Buffer.from(hashSumForImage.digest('hex')),
+  });
+  instructions.push(instruction1);
+  // 2nd instruction
+  const hashSumForManifest = crypto.createHash('sha256');
+  hashSumForManifest.update(JSON.stringify(manifestJsonBuffer));
+  const hex = hashSumForManifest.digest('hex');
+  const instruction = new TransactionInstruction({
+    keys: [],
+    programId: memo,
+    data: Buffer.from(hex),
+  });
+  instructions.push(instruction);
 
   return {
     instructions,

@@ -80,15 +80,9 @@ class Crank {
 
       const anchorWallet = new anchor.Wallet(routerBuilder._wallet);
 
-      /***********************************************ONLY FOR TESTING****************************************************************************/
-      // const cluster: string = process.env.DEV_NET == undefined ? 'http://localhost:8899' : process.env.DEV_NET;
-      // const walletAddressPath: string = process.env.PROGRAM_WALLET == undefined ? '../../../env/program_wallet.json' : process.env.PROGRAM_WALLET;
-      // const testProvider = getProvider(cluster, walletAddressPath);
-      // const nftResult = await mintNFT(testProvider.connection, anchorWallet, files[0], 'devnet', 1);
-      /***********************************************ONLY FOR TESTING****************************************************************************/
       let retry = 3;
       while (retry > 0) {
-        const nftResult = await mintNFT(routerBuilder.provider.connection, anchorWallet, files[0], 'devnet', 1);
+        const nftResult = await mintNFT(routerBuilder.provider.connection, anchorWallet, userPubKeyToMint, files[0], 'devnet', 1);
         logger.info('NFT RESULT : {} ', nftResult);
 
         if (nftResult.metadataAccount && nftResult.arweaveLink !== undefined) {
@@ -138,19 +132,40 @@ class Crank {
   };
 }
 
-// // only for testing
-// const getKeypair = (secretKeyFilePath: String): Keypair => {
-//   return anchor.web3.Keypair.fromSecretKey(new Uint8Array(JSON.parse(require('fs').readFileSync(secretKeyFilePath, 'utf8'))));
-// };
-// // only for testing
-// const getProvider = (cluster: string, walletAddressPath: string): anchor.Provider => {
-//   const connection = new anchor.web3.Connection(cluster, 'recent');
-//   const walletWrapper = new anchor.Wallet(getKeypair(walletAddressPath));
-//   const provider = new anchor.Provider(connection, walletWrapper, {
-//     preflightCommitment: 'recent',
-//   });
-//   return provider;
-// };
+// only for testing
+const getKeypair = (secretKeyFilePath: String): Keypair => {
+  return anchor.web3.Keypair.fromSecretKey(new Uint8Array(JSON.parse(require('fs').readFileSync(secretKeyFilePath, 'utf8'))));
+};
+// only for testing
+const getProvider = (cluster: string, walletAddressPath: string): anchor.Provider => {
+  const connection = new anchor.web3.Connection(cluster, 'recent');
+  const walletWrapper = new anchor.Wallet(getKeypair(walletAddressPath));
+  const provider = new anchor.Provider(connection, walletWrapper, {
+    preflightCommitment: 'recent',
+  });
+  return provider;
+};
+
+export const startTest = async () => {
+  const routerProgramID = process.env.ROUTER_PROGRAM_ID;
+  const routerIdlPath = process.env.ROUTER_IDL_PATH;
+  const routerBuilder = new ProgramBuilder(process.env.LOCAL_NET, process.env.PROGRAM_WALLET, routerProgramID, routerIdlPath);
+  const imagesPath: string = process.env.IMAGES_FOLDER == undefined ? '../../../images' : process.env.IMAGES_FOLDER;
+  const files = getImagesAndMetadata(0, 1, imagesPath);
+  const anchorWallet = new anchor.Wallet(routerBuilder._wallet);
+  const cluster: string = process.env.DEV_NET == undefined ? 'http://localhost:8899' : process.env.DEV_NET;
+  const walletAddressPath: string = process.env.PROGRAM_WALLET == undefined ? '../../../env/program_wallet.json' : process.env.PROGRAM_WALLET;
+  const testProvider = getProvider(cluster, walletAddressPath);
+  const nftResult = await mintNFT(
+    testProvider.connection,
+    anchorWallet,
+    new PublicKey('HzeJv4htfH9upLy6g4ygn8zFjrbdy5VbUqkpouVguVHz'),
+    files[0],
+    'devnet',
+    1,
+  );
+  logger.info(nftResult);
+};
 
 const startCrank = async (job: any) => {
   const routerProgramID = process.env.ROUTER_PROGRAM_ID;
