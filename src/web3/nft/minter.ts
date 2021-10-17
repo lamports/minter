@@ -198,14 +198,18 @@ export const mintNFT = async (
   const payerKey = await getNewWallet();
   const metadataResult = await createArweaveNftTransaction(payerKey, imageBuffer, manifestJsonBuffer);
 
-  const metadataFile = metadataResult.filter(m => m.filename === 'manifest.json');
+  const metadataFile: { filename: string; success: string; transactionId: string } = metadataResult.filter(
+    (m: { filename: string }) => m.filename === 'manifest.json',
+  );
+
+  console.log(metadataFile);
 
   //TODO: Wait for transaction to confirm on ARweave side
 
   console.log('META FILEEE', metadataFile);
   const arweaveLink = `https://arweave.net/${metadataFile.transactionId}`;
   const metadata = JSON.parse(manifestJsonBuffer.toString());
-  if (metadataFile?.transactionId && programWallet.publicKey) {
+  if (!metadataFile?.transactionId) {
     const updateInstructions: TransactionInstruction[] = [];
     const updateSigners: Keypair[] = [];
 
@@ -224,6 +228,9 @@ export const mintNFT = async (
       updateInstructions,
       metadataAccount,
     );
+
+    console.log('Mint Key ', mintKey);
+    console.log('Receiver Key ', recipientKey);
 
     updateInstructions.push(
       Token.createMintToInstruction(TOKEN_PROGRAM_ID, toPublicKey(mintKey), toPublicKey(recipientKey), toPublicKey(payerPublicKeyString), [], 1),
