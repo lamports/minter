@@ -25,7 +25,7 @@ class ProgramController {
 
   public crank = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      await jobScheduler();
+      //await jobScheduler();
       res.sendStatus(200);
     } catch (err) {
       next(err);
@@ -36,6 +36,14 @@ class ProgramController {
     try {
       //await addUser();
       res.sendStatus(200);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public nftTest = async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      //await startTest();
     } catch (err) {
       next(err);
     }
