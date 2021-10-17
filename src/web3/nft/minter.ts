@@ -22,7 +22,6 @@ import crypto from 'crypto';
 import { getAssetCostToStore } from './fee.arweave';
 import { logger } from '@/utils/logger';
 import getNewWallet, { createArweaveNftTransaction } from '../arweave/binding';
-
 export const AR_SOL_HOLDER_ID = new PublicKey('HvwC9QSAzvGXhhVrgPmauVwFWcYZhne3hVot9EbHuFTm');
 export const MEMO_PROGRAM_ID = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
 export const TOKEN_PROGRAM_ID_STR = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
@@ -116,7 +115,7 @@ export const mintNFT = async (
     external_url: imageAndMetaData.manifestJson.external_url,
     properties: {
       ...imageAndMetaData.manifestJson.properties,
-      creators: imageAndMetaData.manifestJson.creators?.map(creator => {
+      creators: imageAndMetaData.manifestJson.properties.creators?.map(creator => {
         return {
           address: creator.address,
           share: creator.share,
@@ -155,12 +154,18 @@ export const mintNFT = async (
 
   const recipientKey = (
     await findProgramAddress(
-      [mintToPubkey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), toPublicKey(mintKey).toBuffer()],
+      [programWallet.publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), toPublicKey(mintKey).toBuffer()],
       new PublicKey(ASSOCIATED_PROGRAM_ID),
     )
   )[0];
 
-  createAssociatedTokenAccountInstruction(instructions, toPublicKey(recipientKey), programWallet.publicKey, mintToPubkey, toPublicKey(mintKey));
+  createAssociatedTokenAccountInstruction(
+    instructions,
+    toPublicKey(recipientKey),
+    programWallet.publicKey,
+    programWallet.publicKey,
+    toPublicKey(mintKey),
+  );
 
   const metadataAccount = await createMetadata(
     new Data({
@@ -168,7 +173,7 @@ export const mintNFT = async (
       name: metadataJSON.name,
       uri: ' '.repeat(64), // size of url for arweave
       sellerFeeBasisPoints: metadataJSON.seller_fee_basis_points,
-      creators: metadataJSON.properties.creators,
+      creators: metadataJSON.creators,
     }),
     programWallet.publicKey.toBase58(),
     mintKey,
@@ -196,13 +201,17 @@ export const mintNFT = async (
     (m: { filename: string }) => m.filename === 'manifest.json',
   );
 
-  console.log(metadataFile);
+  logger.info(metadataFile);
 
   //TODO: Wait for transaction to confirm on ARweave side
 
-  console.log('META FILEEE', metadataFile);
-  const arweaveLink = `https://arweave.net/${metadataFile.transactionId}`;
+  logger.info('META FILEEE', metadataFile);
+  const arweaveLink = `https://arweave.net/${metadataFile[0].transactionId}`;
   const metadata = JSON.parse(manifestJsonBuffer.toString());
+
+  logger.info('THE METADATA IS S');
+  logger.info(metadata);
+
   if (!metadataFile?.transactionId) {
     const updateInstructions: TransactionInstruction[] = [];
     const updateSigners: Keypair[] = [];
@@ -215,10 +224,10 @@ export const mintNFT = async (
         creators: metadata.creators,
         sellerFeeBasisPoints: metadata.seller_fee_basis_points,
       }),
-      mintToPubkey.toBase58(),
+      undefined,
       undefined,
       mintKey,
-      mintToPubkey.toBase58(),
+      payerPublicKeyString,
       updateInstructions,
       metadataAccount,
     );
@@ -229,13 +238,14 @@ export const mintNFT = async (
     updateInstructions.push(
       Token.createMintToInstruction(TOKEN_PROGRAM_ID, toPublicKey(mintKey), toPublicKey(recipientKey), toPublicKey(payerPublicKeyString), [], 1),
     );
+
     // // In this instruction, mint authority will be removed from the main mint, while
     // // minting authority will be maintained for the Printing mint (which we want.)
     await createMasterEdition(
       maxSupply !== undefined ? new anchor.BN(maxSupply) : undefined,
       mintKey,
-      mintToPubkey.toBase58(),
-      mintToPubkey.toBase58(),
+      payerPublicKeyString,
+      payerPublicKeyString,
       payerPublicKeyString,
       updateInstructions,
     );
@@ -243,6 +253,28 @@ export const mintNFT = async (
     const txids = await sendTransactionWithRetry(connection, programWallet, updateInstructions, updateSigners);
     console.log('Transaction ID , ', txids);
     console.log('META DATAAA ACCCOUNT ', metadataAccount);
+
+    const transferInstruction: TransactionInstruction[] = [];
+
+    const minterToKey = (
+      await findProgramAddress(
+        [mintToPubkey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), toPublicKey(mintKey).toBuffer()],
+        new PublicKey(ASSOCIATED_PROGRAM_ID),
+      )
+    )[0];
+
+    createAssociatedTokenAccountInstruction(
+      transferInstruction,
+      toPublicKey(minterToKey),
+      programWallet.publicKey,
+      mintToPubkey,
+      toPublicKey(mintKey),
+    );
+    transferInstruction.push(
+      Token.createTransferInstruction(TOKEN_PROGRAM_ID, toPublicKey(recipientKey), toPublicKey(minterToKey), programWallet.publicKey, [], 1),
+    );
+    const txid2 = await sendTransactionWithRetry(connection, programWallet, transferInstruction, updateSigners);
+    console.log('Transaction ID , ', txid2);
   }
 
   //return undefined;
