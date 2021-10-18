@@ -8,7 +8,7 @@ export interface MetadataJSON {
   attributes: Attribute[];
   properties: Property;
   collection: Collection;
-  animation_url: string | undefined;
+  animation_url?: string | undefined;
   //creators: Creator[] | null;
   //sellerFeeBasisPoints: number;
 }

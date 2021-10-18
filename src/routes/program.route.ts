@@ -13,7 +13,7 @@ class ProgramRoute implements Routes {
   private initializeRoutes() {
     this.router.get(`${this.path}/initialize`, this.programController.initProgram);
     this.router.get(`${this.path}/start/crank`, this.programController.crank);
-    this.router.get(`${this.path}/add/user/test`, this.programController.addUserTest);
+    this.router.get(`${this.path}/user/test`, this.programController.userTest);
     this.router.get(`${this.path}/test/nft`, this.programController.nftTest);
   }
 }

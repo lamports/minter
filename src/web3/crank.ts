@@ -60,14 +60,16 @@ class Crank {
       const userPubKeyToMint: PublicKey = userVaultAccount.usersPubKey[nftSubAccount.currentSubAccountIndex];
 
       //store the userPublicKey in DB
-      const newUser: UserInput = {
+      const newUserInput: UserInput = {
         name: userPubKeyToMint.toString(),
         metadataAccount: null,
         arweaveLink: null,
+        transactionID: null,
       };
 
-      const user = await this.addUser(newUser);
-      logger.info('User added , ', user);
+      const newUser = await this.addUser(newUserInput);
+      logger.info('User added , ', newUser);
+
       // get the currentIndex from routerData
       const currentIndex = routerData.config.itemsAvailable; // we will give away the mintings in the reverse order.
       //const currentIndex = 0; // ------------------------------------------------------------>>>>>>>>>> CHANGE THIS LATERRRRR
@@ -86,12 +88,14 @@ class Crank {
         logger.info('NFT RESULT : {} ', nftResult);
 
         if (nftResult.metadataAccount && nftResult.arweaveLink !== undefined) {
-          const user = await userDao.getOne(userPubKeyToMint.toString());
+          //const user = await userDao.getOne(userPubKeyToMint.toString(), newUser._id);
+          const user = await userDao.getById(newUser._id);
           const updateUser: UserInput = {
             name: user.name,
             _id: user._id,
             metadataAccount: nftResult.metadataAccount,
             arweaveLink: nftResult.arweaveLink,
+            transactionID: nftResult.mintToTransactionId,
           };
           // update the userPublic key in DB
           await userDao.update(updateUser);
@@ -198,3 +202,26 @@ const jobScheduler = () => {
 };
 
 export default jobScheduler;
+
+export const testUser = async (): Promise<IMongoUser> => {
+  const newUserInput: UserInput = {
+    name: 'Test me'.toString(),
+    metadataAccount: null,
+    arweaveLink: null,
+    transactionID: null,
+  };
+  const newUser = await userDao.add(newUserInput);
+  //logger.debug(newUser._id);
+  const user = await userDao.getById(newUser._id);
+  logger.info(user._id);
+  await userDao.update({
+    name: 'Test me'.toString(),
+    metadataAccount: 'updated',
+    arweaveLink: 'areweae',
+    transactionID: 'q12asasas_asd_4',
+    _id: user._id,
+  });
+  const updatedUser = await userDao.getById(user._id);
+  return updatedUser;
+  //return newUser;
+};

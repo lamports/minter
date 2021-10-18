@@ -1,10 +1,12 @@
 import { IMongoUser, User } from '@/models/User';
+const mongoose = require('mongoose');
 
 export interface IUserDao {
-  getOne: (name: string) => Promise<IMongoUser | null>;
+  getOne: (name: string, id: string) => Promise<IMongoUser | null>;
   getAll: () => Promise<IMongoUser[]>;
   add: (user: UserInput) => Promise<IMongoUser>;
   update: (user: UserInput) => Promise<void>;
+  getById: (id: string) => Promise<IMongoUser | null>;
 }
 
 export interface UserInput {
@@ -12,15 +14,24 @@ export interface UserInput {
   metadataAccount: string;
   arweaveLink: string;
   _id?: string;
+  transactionID: string;
 }
 
 export class UserDao implements IUserDao {
+  public async getById(id: any): Promise<IMongoUser | null> {
+    try {
+      const user = await User.findOne({ _id: mongoose.Types.ObjectId(id) });
+      return user;
+    } catch (err) {
+      throw err;
+    }
+  }
   /**
    * @param name
    */
-  public async getOne(name: string): Promise<IMongoUser | null> {
+  public async getOne(name: string, id: string): Promise<IMongoUser | null> {
     try {
-      const user = await User.findOne({ name });
+      const user = await User.findOne({ name: name, _id: id }).sort({ updatedAt: -1 });
       return user;
     } catch (err) {
       throw err;
@@ -70,6 +81,7 @@ export class UserDao implements IUserDao {
         updateUser.name = user.name;
         updateUser.metadataAccount = user.metadataAccount;
         updateUser.arweaveLink = user.arweaveLink;
+        updateUser.transactionId = user.transactionID;
         await updateUser.save();
       }
       throw new Error('user not found');

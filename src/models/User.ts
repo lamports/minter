@@ -4,6 +4,9 @@ export interface IMongoUser extends Document {
   name: string;
   metadataAccount: string;
   arweaveLink: string;
+  transactionId: string;
+  createdAt: Number;
+  updatedAt: Number;
 }
 
 const userSchema = new Schema({
@@ -16,6 +19,17 @@ const userSchema = new Schema({
   },
   arweaveLink: {
     type: String,
+  },
+  transactionId: {
+    type: String,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now(),
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now(),
   },
 });
 

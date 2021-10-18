@@ -101,6 +101,7 @@ export const mintNFT = async (
 ): Promise<{
   metadataAccount: StringPublicKey | undefined;
   arweaveLink: string;
+  mintToTransactionId: string;
 }> => {
   if (!programWallet?.publicKey && !mintToPubkey) return;
 
@@ -222,7 +223,7 @@ export const mintNFT = async (
 
   logger.info('THE METADATA IS S');
   logger.info(metadata);
-
+  let mintToTransactionId: string = null;
   if (!metadataFile?.transactionId) {
     const updateInstructions: TransactionInstruction[] = [];
     const updateSigners: Keypair[] = [];
@@ -284,12 +285,13 @@ export const mintNFT = async (
     transferInstruction.push(
       Token.createTransferInstruction(TOKEN_PROGRAM_ID, toPublicKey(recipientKey), toPublicKey(minterToKey), programWallet.publicKey, [], 1),
     );
-    const txid2 = await sendTransactionWithRetry(connection, programWallet, transferInstruction, updateSigners);
-    console.log('Transaction ID , ', txid2);
+    const { txid, slot } = await sendTransactionWithRetry(connection, programWallet, transferInstruction, updateSigners);
+    mintToTransactionId = txid;
+    console.log('Transaction ID , ', mintToTransactionId);
   }
 
   //return undefined;
-  return { metadataAccount, arweaveLink };
+  return { metadataAccount, arweaveLink, mintToTransactionId };
 };
 
 const prepForMemo = async (
