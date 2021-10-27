@@ -43,21 +43,34 @@ class Crank {
 
       const routerData: RouterData = (await routerBuilder.program.account.routerData.fetch(routerAccount.publicKey)) as RouterData;
 
-      const nftSubAccount: NftSubAccount = routerData.data.subAccounts[routerData.data.currentAccountIndex];
+      // console.log(routerAccount.publicKey.toString());
+      //console.log(routerBuilder.program);
+      //console.log(routerData.data);
+      // console.log(routerData.data.subAccounts[routerData.data.currentAccountIndex]);
+      const subAccount: NftSubAccount = routerData.data.subAccounts[routerData.data.currentAccountIndex];
 
-      logger.info('Current Nft Sub account is {} ', nftSubAccount);
+      logger.info('Current Nft Sub account is');
+      console.log(subAccount.nftSubAccount);
 
-      if (nftSubAccount.currentSubAccountIndex >= 240) {
+      if (subAccount.currentSubAccountIndex >= 240) {
         // this has to be handled in UI because CPI doesn't return value in programs
         this.updateCurrentAccountIndex(routerBuilder, routerAccount, routerBuilder._wallet);
         return;
       }
 
-      const vaultAccount: PublicKey = nftSubAccount.nftSubAccount;
+      const vaultAccount: PublicKey = subAccount.nftSubAccount;
 
-      const userVaultAccount: UserVaultAccount = (await vaultBuilder.program.account.userVaultAccount.fetch(vaultAccount)) as UserVaultAccount;
+      console.log('Vault account ', vaultAccount);
 
-      const userPubKeyToMint: PublicKey = userVaultAccount.usersPubKey[nftSubAccount.currentSubAccountIndex];
+      const userVaultAccount: UserVaultAccount = (await vaultBuilder.program.account.userVaultAccount.fetch(
+        vaultAccount.toString(),
+      )) as UserVaultAccount;
+
+      console.log(subAccount.currentSubAccountIndex);
+
+      const userPubKeyToMint: PublicKey = userVaultAccount.usersPubKey[subAccount.currentSubAccountIndex];
+
+      console.log('User to mint', userPubKeyToMint);
 
       //store the userPublicKey in DB
       const newUserInput: UserInput = {
@@ -72,6 +85,12 @@ class Crank {
 
       // get the currentIndex from routerData
       const currentIndex = routerData.config.itemsAvailable; // we will give away the mintings in the reverse order.
+
+      if (currentIndex < 1) {
+        logger.info('No Items available to mint');
+        return;
+      }
+
       //const currentIndex = 0; // ------------------------------------------------------------>>>>>>>>>> CHANGE THIS LATERRRRR
       const imagesPath: string = process.env.IMAGES_FOLDER == undefined ? '../../../images' : process.env.IMAGES_FOLDER;
       const files = getImagesAndMetadata(currentIndex, 1, imagesPath);
@@ -105,6 +124,10 @@ class Crank {
           if (nftSubAccount2.currentSubAccountIndex >= 240) {
             this.updateCurrentAccountIndex(routerBuilder, routerAccount, routerBuilder._wallet);
           }
+
+          // increment the sub account index by one after minting successfully for the current account
+          this.incrementSubAccountIndexByOne(routerBuilder, routerAccount, routerBuilder._wallet);
+
           break;
         } else {
           retry--;
@@ -134,6 +157,15 @@ class Crank {
   private addUser = async (newUser: UserInput): Promise<IMongoUser> => {
     return userDao.add(newUser);
   };
+
+  private async incrementSubAccountIndexByOne(routerBuilder: ProgramBuilder, routerAccount: Keypair, programWallet: Keypair) {
+    await routerBuilder.program.rpc.incrementSubAccountIndexByOne({
+      accounts: {
+        routerAccount: routerAccount.publicKey,
+        authority: programWallet.publicKey,
+      },
+    });
+  }
 }
 
 // only for testing
@@ -188,7 +220,7 @@ const jobScheduler = () => {
   // Create new cronjob
   // eslint-disable-next-line prefer-const
   job = new CronJob({
-    cronTime: '*/1 * * * *',
+    cronTime: '*/55 * * * * *',
     onTick: async () => {
       logger.info('Running every 1 minutes');
       await startCrank(job);
@@ -196,7 +228,7 @@ const jobScheduler = () => {
     start: false,
     timeZone: 'America/Los_Angeles',
   });
-  logger.info('Starting the job, running every 3 minutes');
+  logger.info('Starting the job, running every 1 minutes');
   // Auto start your cronjob
   job.start();
 };

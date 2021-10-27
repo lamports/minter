@@ -183,7 +183,7 @@ export const mintNFT = async (
     name: metadataJSON.name,
     uri: ' '.repeat(64), // size of url for arweave
     sellerFeeBasisPoints: metadataJSON.seller_fee_basis_points,
-    creators: null, //// ---->>>>>>>>> THIS NEEDS TO BE FIXEDDD
+    creators: creators, //// ---->>>>>>>>> THIS NEEDS TO BE FIXEDDD
   });
   const metadataAccount = await createMetadata(
     newData,

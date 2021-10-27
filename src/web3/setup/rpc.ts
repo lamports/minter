@@ -60,6 +60,8 @@ export class RpcCalls {
       const routerProgram = routerBuilder.program;
       const routerAccount: Keypair = routerBuilder.getKeypair(routerSecretKeyFilePath);
 
+      console.log('Router Account :: ', routerAccount.publicKey.toString());
+
       await routerProgram.rpc.updateConfig(
         {
           price: priceInLamports,

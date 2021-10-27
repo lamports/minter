@@ -18,11 +18,12 @@ export const initialize = async (next: NextFunction) => {
 
     const priceInLamports = +process.env.ART_PRICE * LAMPORTS_PER_SOL;
     const itemsAvailable = +process.env.ITEMS_AVAILABLE;
-    const goLiveDate = Date.now() / 1000 + +process.env.LAUNCH_DATE_FROM_TODAY; //live in 30 days from today
+    //const goLiveDate = Date.now() / 1000 + +process.env.LAUNCH_DATE_FROM_TODAY; //live in 30 days from today
+    const goLiveDate = Date.now() / 1000 - 100000000; //live in 30 days from today
 
     const maxVaultAccounts = +process.env.MAX_VAULT_ACCOUNTS;
 
-    const tx = await rpcCaller.initializeRouter(vaultProgramID, vaultIdlPath, routerProgramID, routerIdlPath, routerSecretKeyPath, externalWallet);
+    // const tx = await rpcCaller.initializeRouter(vaultProgramID, vaultIdlPath, routerProgramID, routerIdlPath, routerSecretKeyPath, externalWallet);
     const tx2 = await rpcCaller.updateRouterConfig(routerProgramID, routerIdlPath, routerSecretKeyPath, priceInLamports, goLiveDate, itemsAvailable);
 
     // // eslint-disable-next-line prefer-const
@@ -32,16 +33,6 @@ export const initialize = async (next: NextFunction) => {
       const filePath = process.env.VAULT_JSON_PATH + 'vault_secret_' + i + '.json';
       vaultSecretFileNames.push(filePath);
     }
-
-    // await rpcCaller.addSubAccountsToRouter(
-    //   routerProgramID,
-    //   routerIdlPath,
-    //   vaultProgramID,
-    //   vaultIdlPath,
-    //   routerSecretKeyPath,
-    //   vaultSecretFileNames,
-    //   externalWallet,
-    // );
 
     let i = 0;
     let j = 10;

@@ -12,14 +12,14 @@
       "category": "image",
       "creators": [
         {
-            "address" : "A3fcEBpN1g7xjZte8hTAt7NgPT9Lh9WvdKEb9TogSTis",
-            "share" : 10,
-            "verified" : 1
+            "address" : "HzeJv4htfH9upLy6g4ygn8zFjrbdy5VbUqkpouVguVHz",
+            "share" : 10
+            
         },
         {
-            "address" : "7E2errRantVXQH5rBPGnDzTPrHfrviLdA2xRcUKG4tm8",
-            "share" : 10,
-            "verified" : 1
+            "address" : "HzeJv4htfH9upLy6g4ygn8zFjrbdy5VbUqkpouVguVHz",
+            "share" : 10
+            
         }
       ]
     },
